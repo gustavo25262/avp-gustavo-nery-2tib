@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 export default function AuthForm({ onSubmit, busy }) {
   const [modo, setModo] = useState("login");

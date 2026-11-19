@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import AuthForm from "./components/AuthForm.jsx";
 import Feedback from "./components/Feedback.jsx";
 import GameCard from "./components/GameCard.jsx";

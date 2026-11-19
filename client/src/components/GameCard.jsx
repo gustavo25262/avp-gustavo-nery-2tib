@@ -1,3 +1,5 @@
+import React from "react";
+
 export default function GameCard({ jogo, onEdit, onDelete, busy }) {
   return (
     <article className="game-card">
