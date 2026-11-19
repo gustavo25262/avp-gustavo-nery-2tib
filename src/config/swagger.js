@@ -1,3 +1,1 @@
-import swaggerJsdoc from "swagger-jsdoc";
-
-export default swaggerSpec
+export { default } from "../docs/swagger.js";

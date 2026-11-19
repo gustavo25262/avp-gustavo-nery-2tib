@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
-
-const jwtSecret = process.env.JWT_SECRET || "segredo-de-desenvolvimento";
+import { obterJwtSecret } from "../config/env.js";
 
 export function autenticar(req, res, next) {
   const authorization = req.headers.authorization;
@@ -12,10 +11,15 @@ export function autenticar(req, res, next) {
     return res.status(401).json({ mensagem: "Token Bearer ausente" });
   }
 
+  const secret = obterJwtSecret();
   try {
-    req.user = jwt.verify(token, jwtSecret);
-    next();
-  } catch {
-    res.status(401).json({ mensagem: "Token invalido ou expirado" });
+    req.user = jwt.verify(token, secret);
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({ mensagem: "Token inválido ou expirado." });
+    }
+    return next(error);
   }
+
+  next();
 }

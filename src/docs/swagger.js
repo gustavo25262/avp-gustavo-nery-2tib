@@ -5,7 +5,7 @@ const swaggerDefinition = {
   info: {
     title: "API Catalogo de Jogos",
     version: "1.0.0",
-    description: "API REST em memoria para catalogo de jogos"
+    description: "API REST persistente para catálogo de jogos com autenticação JWT."
   },
   servers: [{ url: "http://localhost:3000" }],
   components: {

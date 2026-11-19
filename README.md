@@ -1,78 +1,124 @@
-# API Catalogo de Jogos
+# Catálogo de Jogos
 
-Projeto escolar de API REST com Node.js e Express. O tema foi trocado de cadastro de alunos para catalogo de jogos porque o enunciado nao aceita temas escolares.
+Aplicação escolar de catálogo de jogos. O backend usa Node.js, Express e Prisma com MySQL; o frontend usa React e Vite. O CRUD e as contas são persistidos no banco de dados.
 
-## Requisitos e execucao
+## Requisitos
 
-- Node.js 18+
-- `npm install`
-- Copie `.env.example` para `.env` e defina um `JWT_SECRET` proprio.
-- `npm run dev` (desenvolvimento) ou `npm start`
+- Node.js 20.19 ou superior.
+- MySQL em execução e um banco criado (por exemplo, `gustavo_nery_2tib`).
+- npm.
 
-A API inicia em `http://localhost:3000`. Os dados ficam em memoria e sao perdidos ao reiniciar.
+## Configuração e execução
 
-## Rotas
+1. Na raiz, instale as dependências:
 
-### AV1: jogos
+   ```bash
+   npm install
+   ```
 
-Os `GET` sao publicos. `POST`, `PUT` e `DELETE` exigem `Authorization: Bearer TOKEN`.
+2. Crie o arquivo `.env` copiando `.env.example`. Configure `DATABASE_URL` para seu MySQL e troque `JWT_SECRET` por uma chave própria com pelo menos 32 caracteres. Exemplo local:
 
-Corpo de jogo:
+   ```env
+   PORT=3000
+   JWT_SECRET=use-uma-chave-local-com-pelo-menos-32-caracteres
+   DATABASE_URL="mysql://root:sua-senha@localhost:3306/gustavo_nery_2tib"
+   CLIENT_ORIGIN=http://localhost:5173
+   ```
 
-```json
-{
-  "titulo": "Hades",
-  "genero": "Roguelike",
-  "plataforma": "PC",
-  "anoLancamento": 2020,
-  "preco": 74.99
-}
-```
+3. Gere o cliente Prisma e aplique as migrações:
 
-| Metodo | Rota | Sucesso |
-| --- | --- | --- |
-| POST | `/jogos` | `201` com o jogo criado |
-| GET | `/jogos` | `200` com a lista |
-| GET | `/jogos/:id` | `200` com o jogo |
-| PUT | `/jogos/:id` | `200` com o jogo atualizado |
-| DELETE | `/jogos/:id` | `200` com o jogo removido |
+   ```bash
+   npm run db:generate
+   npm run db:migrate
+   ```
 
-IDs sao gerados por contador incremental e nao sao reutilizados depois de exclusoes. Campos ausentes retornam `400`; IDs inexistentes retornam `404`.
+   A primeira migração já existente cria a tabela de jogos legada. A seguinte adapta os nomes de campos sem apagar os registros e cria a tabela de usuários. Jogos antigos recebem valores padrão para plataforma, ano e preço, que podem ser atualizados pela interface.
 
-Exemplos:
+4. Em um terminal, inicie a API:
+
+   ```bash
+   npm run dev
+   ```
+
+   A API fica em `http://localhost:3000`; a documentação Swagger, em `http://localhost:3000/api-docs`.
+
+5. Em outro terminal, instale e inicie o frontend:
+
+   ```bash
+   cd client
+   npm install
+   npm run dev
+   ```
+
+   Abra o endereço exibido pelo Vite (normalmente `http://localhost:5173`). O Vite encaminha as chamadas da API para a porta 3000.
+
+Para produção, defina `VITE_API_URL` no ambiente de build do frontend com a URL da API e configure `CLIENT_ORIGIN` com a origem publicada. Aplique migrações existentes com `npx prisma migrate deploy`.
+
+## Como funciona
+
+### Backend (AV1)
+
+- **Routes:** `src/routes/` define endpoints e combina middlewares com controllers.
+- **Controllers:** `src/controllers/` valida entradas e monta respostas HTTP.
+- **Models:** `src/models/` usa Prisma para consultar e alterar o banco.
+- **Config:** `src/config/` configura o cliente Prisma e valida as variáveis de ambiente.
+- **Middleware:** `src/middlewares/auth.js` valida o JWT nas rotas de escrita.
+
+O cliente Prisma usa o adapter MariaDB para conectar ao MySQL configurado em `DATABASE_URL`. As migrações em `prisma/migrations/` versionam a estrutura do banco. Os dados não são carregados de arrays no servidor.
+
+Ao cadastrar, a senha é armazenada como hash bcrypt. O login compara o hash e retorna um JWT com validade de uma hora. O frontend envia esse token como `Authorization: Bearer <token>` para cadastrar, editar ou excluir jogos. O logout remove o token do navegador; como JWT é stateless, um token já emitido permanece válido até expirar.
+
+### Frontend (AV2)
+
+Os componentes React em `client/src/components/` organizam autenticação, formulários, mensagens e cartões de jogos. O componente principal mantém usuário, jogos, carregamento e mensagens com `useState`; os formulários enviam eventos para a API por `client/src/api.js`. A tela lista somente os registros retornados pelo backend.
+
+## Endpoints
+
+| Método | Rota | Acesso | Descrição |
+|---|---|---|---|
+| `GET` | `/jogos` | Público | Lista jogos persistidos |
+| `GET` | `/jogos/:id` | Público | Consulta um jogo |
+| `POST` | `/jogos` | JWT | Cadastra um jogo |
+| `PUT` | `/jogos/:id` | JWT | Atualiza todos os campos do jogo |
+| `DELETE` | `/jogos/:id` | JWT | Exclui um jogo |
+| `POST` | `/usuarios` | Público | Cadastra usuário |
+| `POST` | `/login` | Público | Autentica e retorna JWT |
+| `GET` | `/usuarios/me` | JWT | Retorna o usuário do token |
+| `POST` | `/upload` | Público | Envia uma imagem JPEG, PNG ou WebP (até 2 MB) |
+| `GET` | `/api-docs` | Público | Documentação Swagger |
+
+### Exemplo de CRUD pela API
+
+Cadastre um usuário e faça login:
 
 ```bash
+curl -X POST http://localhost:3000/usuarios \
+  -H "Content-Type: application/json" \
+  -d "{\"nome\":\"Ana\",\"email\":\"ana@email.com\",\"senha\":\"senha123\"}"
+
+curl -X POST http://localhost:3000/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"ana@email.com\",\"senha\":\"senha123\"}"
+```
+
+Use o valor `token` retornado no login:
+
+```bash
+curl -X POST http://localhost:3000/jogos \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d "{\"titulo\":\"Hades\",\"genero\":\"Roguelike\",\"plataforma\":\"PC\",\"anoLancamento\":2020,\"preco\":74.99}"
+
 curl http://localhost:3000/jogos
 curl http://localhost:3000/jogos/1
-curl -X POST http://localhost:3000/jogos -H "Content-Type: application/json" -H "Authorization: Bearer TOKEN" -d '{"titulo":"Celeste","genero":"Plataforma","plataforma":"PC","anoLancamento":2018,"preco":36.99}'
-curl -X PUT http://localhost:3000/jogos/1 -H "Content-Type: application/json" -H "Authorization: Bearer TOKEN" -d '{"titulo":"Hades II","genero":"Roguelike","plataforma":"PC","anoLancamento":2024,"preco":99.99}'
-curl -X DELETE http://localhost:3000/jogos/1 -H "Authorization: Bearer TOKEN"
+curl -X PUT http://localhost:3000/jogos/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -d "{\"titulo\":\"Hades II\",\"genero\":\"Roguelike\",\"plataforma\":\"PC\",\"anoLancamento\":2024,\"preco\":99.99}"
+curl -X DELETE http://localhost:3000/jogos/1 \
+  -H "Authorization: Bearer SEU_TOKEN"
 ```
 
-### AV2: autenticacao
+## Testes
 
-| Metodo | Rota | Descricao |
-| --- | --- | --- |
-| POST | `/usuarios` | Cadastra usuario com `nome`, `email` e `senha` |
-| POST | `/login` | Valida credenciais e retorna JWT com validade de 1 hora |
-| POST | `/upload` | Recebe imagem no campo `imagem` |
-| GET | `/api-docs` | Abre a documentacao Swagger |
-
-Cadastro e login:
-
-```bash
-curl -X POST http://localhost:3000/usuarios -H "Content-Type: application/json" -d '{"nome":"Ana","email":"ana@email.com","senha":"senha123"}'
-curl -X POST http://localhost:3000/login -H "Content-Type: application/json" -d '{"email":"ana@email.com","senha":"senha123"}'
-```
-
-Use o valor de `token` retornado no header das rotas protegidas. As senhas sao armazenadas somente como hash bcrypt; credenciais invalidas retornam `401`.
-
-### Upload
-
-Aceita apenas `image/jpeg`, `image/png` e `image/webp`, com limite de 2 MB. O arquivo e salvo em `src/uploads/` e a resposta informa `arquivo` e `caminho`.
-
-```bash
-curl -X POST http://localhost:3000/upload -F "imagem=@./capa.png"
-```
-
-O Swagger detalha todas as rotas em [http://localhost:3000/api-docs](http://localhost:3000/api-docs).
+Na raiz, execute `npm test` para verificar a inicialização HTTP, respostas JSON de erro, validação do CRUD e middleware JWT. Os testes de integração e persistência exigem um MySQL configurado; depois de definir `.env` e aplicar as migrações, demonstre-os com as rotas acima ou pela interface.
