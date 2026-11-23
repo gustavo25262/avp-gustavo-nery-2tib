@@ -1,8 +1,7 @@
-/node_modules
-/client/node_modules
-/client/dist
+node_modules/
+dist/
 .env
-src/uploads/*
-!src/uploads/.gitkeep
+/backend/src/uploads/*
+!/backend/src/uploads/.gitkeep
 
-/generated/prisma
+/backend/generated/prisma
